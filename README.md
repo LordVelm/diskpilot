@@ -1,6 +1,6 @@
-# DiskPart GUI
+# DiskPilot
 
-A free, lightweight, open-source GUI wrapper for Windows `diskpart`. Manage disks and partitions without bloated tools like MiniTool or EaseUS.
+A free, lightweight, open-source disk & partition manager for Windows. Manage your drives without bloated tools like MiniTool or EaseUS.
 
 ## Features
 
@@ -47,7 +47,7 @@ pip install customtkinter wmi pywin32
 python gui.py
 ```
 
-Or download the standalone `.exe` from [Releases](https://github.com/LordVelm/diskpart-gui/releases).
+Or download the standalone `.exe` from [Releases](https://github.com/LordVelm/diskpart-gui/releases). No install needed — just run it.
 
 The app will prompt for administrator privileges on launch.
 
@@ -62,7 +62,7 @@ The app will prompt for administrator privileges on launch.
 
 ```powershell
 pip install pyinstaller
-python build.py          # outputs to dist/DiskPartGUI.exe
+python build.py          # outputs to dist/DiskPilot.exe
 ```
 
 The exe includes a UAC admin manifest — Windows will show the shield icon and prompt for elevation.

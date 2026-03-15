@@ -1,4 +1,4 @@
-"""PyInstaller build script for DiskPart GUI."""
+"""PyInstaller build script for DiskPilot."""
 
 import os
 import subprocess
@@ -15,7 +15,7 @@ def build():
         sys.executable, "-m", "PyInstaller",
         "--onefile",
         "--windowed",
-        "--name", "DiskPartGUI",
+        "--name", "DiskPilot",
         "--uac-admin",
         "--add-data", f"icon.ico;." if os.path.exists(icon_path) else "",
         icon_flag,
@@ -26,7 +26,7 @@ def build():
 
     print(f"Running: {' '.join(cmd)}")
     subprocess.run(cmd, cwd=SCRIPT_DIR, check=True)
-    print("\nBuild complete! Executable is in dist/DiskPartGUI.exe")
+    print("\nBuild complete! Executable is in dist/DiskPilot.exe")
 
 
 if __name__ == "__main__":

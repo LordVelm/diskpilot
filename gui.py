@@ -1,7 +1,8 @@
-"""DiskPart GUI — CustomTkinter frontend for disk management."""
+"""DiskPilot — CustomTkinter frontend for disk management."""
 
 import os
 import threading
+import webbrowser
 import customtkinter as ctk
 
 from disk_ops import (
@@ -286,7 +287,7 @@ class DiskPartApp(ctk.CTk):
 
     def __init__(self):
         super().__init__()
-        self.title("DiskPart GUI")
+        self.title("DiskPilot")
         self.geometry("1100x680")
         self.minsize(950, 580)
 
@@ -390,6 +391,13 @@ class DiskPartApp(ctk.CTk):
             font=("Segoe UI", 11), fg_color=T["bg_card"], hover_color=T["bg_card_hover"],
             text_color=T["text_secondary"], command=self._refresh_disks)
         self.hdr_refresh_btn.pack(side="right")
+
+        self.support_btn = ctk.CTkButton(
+            hdr, text="☕ Support", width=80, height=28, corner_radius=6,
+            font=("Segoe UI", 11, "bold"), fg_color="#FFDD00", hover_color="#E5C700",
+            text_color="#000000",
+            command=lambda: webbrowser.open("https://buymeacoffee.com/lordvelm"))
+        self.support_btn.pack(side="right", padx=(0, 6))
 
         self.theme_btn = ctk.CTkButton(
             hdr, text="Light", width=50, height=28, corner_radius=6,
