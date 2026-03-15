@@ -47,7 +47,7 @@ pip install customtkinter wmi pywin32
 python gui.py
 ```
 
-Or download the standalone `.exe` from [Releases](https://github.com/LordVelm/diskpart-gui/releases). No install needed — just run it.
+Or download the standalone `.exe` from [Releases](https://github.com/LordVelm/diskpilot/releases). No install needed — just run it.
 
 The app will prompt for administrator privileges on launch.
 
@@ -74,5 +74,5 @@ The exe includes a UAC admin manifest — Windows will show the shield icon and 
 
 ## Feedback & Support
 
-- **Bug reports & feature requests** — [Open an issue](https://github.com/LordVelm/diskpart-gui/issues)
+- **Bug reports & feature requests** — [Open an issue](https://github.com/LordVelm/diskpilot/issues)
 - **Support the project** — [Buy Me a Coffee](https://buymeacoffee.com/lordvelm)
