@@ -8,9 +8,7 @@ Guidance for Claude Code and collaborators working in this repository. **Read th
 
 **DiskPilot** — Free, lightweight **Windows** disk & partition manager: visual disk list, proportional **partition bar**, partition details, and **destructive operations** (format, delete, create, clean, assign/remove drive letter) with **safety-first** design.
 
-**Current implementation:** Python **CustomTkinter** GUI + **`disk_ops.py`** (WMI reads, `diskpart` writes).
-
-**User intent:** Rebuild the app in **Tauri v2 + React + TypeScript + Vite + Tailwind**, aligned with **`debt-planner-local`** / **`steam-backlog-organizer`** (modern shell, performance, maintainability). **Windows-only** for v1 (same as today).
+**Stack:** **Tauri v2 + React + TypeScript + Vite + Tailwind** with **Rust** backend (WMI reads, `diskpart` writes). **Windows-only** for v1.
 
 ---
 
@@ -31,52 +29,39 @@ npx tsc --noEmit          # TypeScript
 cd src-tauri && cargo check   # Rust
 ```
 
-## Commands (legacy Python app — reference only)
-
-```powershell
-cd diskpilot
-python -m venv venv
-.\venv\Scripts\Activate.ps1
-pip install customtkinter wmi pywin32
-python gui.py
-
-# Build standalone exe
-pip install pyinstaller
-python build.py   # dist/DiskPilot.exe (--uac-admin)
-```
-
 **Tests:** `scripts/export_fixtures.py` generates golden JSON for parity testing.
 
 ---
 
-## Architecture (current — preserve behavior)
+## Architecture
 
-### `disk_ops.py` — Core logic
+### Rust backend (`src-tauri/src/`)
 
-| Area | Behavior |
-|------|----------|
-| **Reads** | **WMI:** `Win32_DiskDrive` → `Win32_DiskPartition` → `Win32_LogicalDisk` (associators). Structured, **no locale-dependent parsing** of diskpart text for enumeration. |
-| **Data** | `DiskInfo` / `PartitionInfo` — index, sizes, filesystem, label, letter, partition type (EFI/Recovery/MSR/Basic), `is_system` / `is_boot`, `offset_bytes` (for bar ordering). |
-| **Writes** | **`diskpart /s`** with a **temp script file** — `_run_diskpart_script()`. All mutations go through this. Timeout **60s**. Success = return code 0 **and** `"error"` not in combined stdout/stderr (case-insensitive). |
-| **Mutations** | `format_partition`, `clean_disk`, `create_partition`, `delete_partition`, `assign_letter`, `remove_letter`. |
-| **Indexing** | **Diskpart uses 1-based partition numbers** — Python uses `partition_index + 1` in scripts; WMI `Index` is 0-based. **Must match exactly in Rust.** |
-| **Admin** | `ctypes` + `IsUserAnAdmin` / `ShellExecuteW("runas")` for elevation. |
+| Module | Responsibility |
+|--------|----------------|
+| `wmi_disk.rs` | WMI enumeration: `Win32_DiskDrive` → `Win32_DiskPartition` → `Win32_LogicalDisk`. Returns `Vec<DiskInfo>` sorted by index, partitions sorted by offset. |
+| `diskpart.rs` | All mutations via `diskpart /s` temp script. 60s timeout. Success = exit 0 + no "error" in output. **1-based** partition numbers (WMI is 0-based). |
+| `safety.rs` | Defense-in-depth: `assert_not_system_disk`, `assert_not_system_partition`, `is_protected_partition`. System disk detected via boot flag + system drive letter. |
+| `lib.rs` | Tauri commands — all IPC entry points. Async via `spawn_blocking`. |
 
-### Safety model (defense in depth — do not weaken)
+### Safety model (do not weaken)
 
-1. **System disk** — Detected via boot partition, system drive letter, WMI flags. **Backend** refuses `clean` on system disk and refuses mutations on **protected** partitions on that disk.
-2. **Protected partitions (on system disk only)** — EFI, Recovery, MSR, system/boot/C: — **not** modifiable. On **non-system** disks (e.g. USB), restrictions are relaxed per current Python behavior.
-3. **UI + backend** — Buttons disabled where appropriate **and** backend `_assert_not_system_disk` / `_assert_not_system_partition` refuse unsafe ops.
-4. **Type-to-confirm** — Destructive ops require typing exact confirmation text (see `gui.py` / `ConfirmDialog`).
-5. **Remove letter** — Cannot remove **system drive** letter.
+1. **System disk** — Detected via boot partition, system drive letter, WMI flags. Backend refuses `clean` on system disk and mutations on protected partitions.
+2. **Protected partitions (system disk only)** — EFI, Recovery, MSR, system/boot/C:. Non-system disks (USB, secondary) have no restrictions.
+3. **UI + backend** — Buttons disabled where appropriate **and** backend independently refuses unsafe ops.
+4. **Type-to-confirm** — Destructive ops require typing exact confirmation text.
+5. **Remove letter** — Cannot remove system drive letter.
 
-### `gui.py` — CustomTkinter
+### React frontend (`src/`)
 
-- Disk list, `DiskBarWidget` (proportional segments), details table, action buttons, theme toggle (dark/light), threading for long ops, status bar.
-
-### `build.py` — PyInstaller
-
-- `--onefile --windowed --uac-admin`, entry `gui.py`.
+- `App.tsx` — main layout, state management
+- `TitleBar` — custom blended title bar with drag region + window controls
+- `DiskList` — sidebar with model/size/badges
+- `PartitionBar` — proportional color-coded segments (click to select)
+- `PartitionDetails` — table with all partition fields
+- `ActionBar` — action buttons, disabled for illegal ops
+- `ConfirmDialog` — type-to-confirm modal
+- `index.css` — dark/light theme via CSS variables
 
 ---
 
@@ -215,12 +200,6 @@ python build.py   # dist/DiskPilot.exe (--uac-admin)
 | `src/types/disk.ts` | Shared TS types mirroring Rust structs |
 | `src/index.css` | Dark/light theme CSS variables (ported from Python THEMES) |
 
-### Legacy reference (Python — still in repo)
-
-| File | Purpose |
-|------|---------|
-| `disk_ops.py` | Original WMI + diskpart + safety gates |
-| `gui.py` | Original CustomTkinter UI + themes |
 
 ---
 

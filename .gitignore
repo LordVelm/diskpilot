@@ -1,19 +1,9 @@
-# Python (legacy)
-__pycache__/
-*.pyc
-*.pyo
-venv/
-.venv/
-*.spec
-*.exe
-
 # Node
 node_modules/
 dist/
 
 # Rust / Tauri
 src-tauri/target/
-build/
 
 # Fixtures (machine-specific)
 fixtures/golden_disks.json
