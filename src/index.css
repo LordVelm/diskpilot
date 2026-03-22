@@ -1,0 +1,131 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  /* Partition bar colors */
+  --bar-ntfs-system: #5B8DEF;
+  --bar-ntfs-data: #4ADE80;
+  --bar-fat: #C084FC;
+  --bar-unallocated: #2A2D35;
+  --bar-protected: #FACC15;
+  --bar-selected-border: #F97316;
+  --bar-text: #ffffff;
+  --bar-text-protected: #000000;
+  --bar-text-free: #555D73;
+
+  /* UI chrome — dark (default) */
+  --bg-main: #0F1117;
+  --bg-sidebar: #161921;
+  --bg-card: #1C1F2B;
+  --bg-card-hover: #242838;
+  --bg-surface: #1A1D27;
+  --bg-table-row: #1E2130;
+  --bg-table-sel: #2A3A5C;
+  --bg-status: #12141B;
+  --bg-input: #0F1117;
+  --separator: #252835;
+
+  /* Text */
+  --text-primary: #E2E8F0;
+  --text-secondary: #8892A8;
+  --text-muted: #555D73;
+
+  /* Accents */
+  --accent-blue: #5B8DEF;
+  --accent-red: #EF4444;
+  --accent-green: #34D399;
+  --accent-purple: #A78BFA;
+  --accent-cyan: #22D3EE;
+  --accent-gray: #4B5563;
+
+  /* Accent hovers */
+  --hover-blue: #4A7AD8;
+  --hover-red: #DC2626;
+  --hover-green: #22B07A;
+  --hover-purple: #8B5CF6;
+  --hover-cyan: #06B6D4;
+  --hover-gray: #6B7280;
+
+  /* Badges */
+  --badge-os-fg: #EF4444;
+  --badge-os-bg: #2A1215;
+  --badge-usb-fg: #F59E0B;
+  --badge-usb-bg: #2A2010;
+  --badge-style-fg: #5B8DEF;
+  --badge-style-bg: #152240;
+}
+
+.light {
+  --bar-ntfs-system: #3B82F6;
+  --bar-ntfs-data: #16A34A;
+  --bar-fat: #9333EA;
+  --bar-unallocated: #D1D5DB;
+  --bar-protected: #EAB308;
+  --bar-selected-border: #EA580C;
+  --bar-text: #ffffff;
+  --bar-text-protected: #000000;
+  --bar-text-free: #6B7280;
+
+  --bg-main: #F3F4F6;
+  --bg-sidebar: #FFFFFF;
+  --bg-card: #F9FAFB;
+  --bg-card-hover: #EEF2FF;
+  --bg-surface: #FFFFFF;
+  --bg-table-row: #F9FAFB;
+  --bg-table-sel: #DBEAFE;
+  --bg-status: #E5E7EB;
+  --bg-input: #F9FAFB;
+  --separator: #E5E7EB;
+
+  --text-primary: #111827;
+  --text-secondary: #4B5563;
+  --text-muted: #9CA3AF;
+
+  --accent-blue: #3B82F6;
+  --accent-red: #EF4444;
+  --accent-green: #10B981;
+  --accent-purple: #8B5CF6;
+  --accent-cyan: #06B6D4;
+  --accent-gray: #9CA3AF;
+
+  --hover-blue: #2563EB;
+  --hover-red: #DC2626;
+  --hover-green: #059669;
+  --hover-purple: #7C3AED;
+  --hover-cyan: #0891B2;
+  --hover-gray: #6B7280;
+
+  --badge-os-fg: #FFFFFF;
+  --badge-os-bg: #EF4444;
+  --badge-usb-fg: #FFFFFF;
+  --badge-usb-bg: #F59E0B;
+  --badge-style-fg: #FFFFFF;
+  --badge-style-bg: #3B82F6;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  background: var(--bg-main);
+  color: var(--text-primary);
+  font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+  overflow: hidden;
+  user-select: none;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--accent-gray);
+  border-radius: 3px;
+}

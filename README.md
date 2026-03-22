@@ -30,7 +30,7 @@ A free, lightweight, open-source disk & partition manager for Windows. Manage yo
 ## Setup
 
 ```powershell
-cd diskpart-gui
+cd diskpilot
 python -m venv venv
 
 # Windows PowerShell:
@@ -71,6 +71,10 @@ The exe includes a UAC admin manifest — Windows will show the shield icon and 
 
 - **Reading** — Uses WMI (`Win32_DiskDrive`, `Win32_DiskPartition`, `Win32_LogicalDisk`) for structured, locale-independent disk enumeration
 - **Writing** — Uses `diskpart /s` subprocess with temp script files for all destructive operations (format, clean, create, delete, assign letter)
+
+## For developers
+
+- **Rebuild plan (Tauri + React + TypeScript), architecture, parity strategy:** see [`CLAUDE.md`](./CLAUDE.md).
 
 ## Feedback & Support
 
