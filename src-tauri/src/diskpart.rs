@@ -8,13 +8,26 @@
 use crate::safety;
 use crate::DiskOpResult;
 use std::process::Command;
+use std::time::{Duration, Instant};
 
-/// Write a diskpart script to a temp file, execute it, return result.
-/// Matches Python: temp file + `diskpart /s` + 60s timeout + success heuristic.
+const DISKPART_TIMEOUT: Duration = Duration::from_secs(60);
+
+/// Known diskpart failure phrases beyond just "error".
+const FAILURE_PHRASES: &[&str] = &[
+    "error",
+    "access is denied",
+    "the media is write protected",
+    "the device is not ready",
+    "the system cannot find",
+    "virtual disk service error",
+    "incorrect function",
+    "the specified disk is not convertible",
+];
+
+/// Write a diskpart script to a temp file, execute it with a 60s timeout, return result.
 fn run_diskpart_script(commands: &[&str]) -> DiskOpResult {
     let script_content = commands.join("\n") + "\n";
 
-    // Manual temp file (matches Python NamedTemporaryFile with delete=False)
     let tmp_dir = std::env::temp_dir();
     let tmp_path = tmp_dir.join(format!(
         "dpgui_{}.txt",
@@ -31,30 +44,68 @@ fn run_diskpart_script(commands: &[&str]) -> DiskOpResult {
         };
     }
 
-    // Run diskpart
-    let result = Command::new("diskpart")
+    // Spawn diskpart with timeout
+    let mut child = match Command::new("diskpart")
         .arg("/s")
         .arg(&tmp_path)
-        .output();
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::piped())
+        .spawn()
+    {
+        Ok(c) => c,
+        Err(e) => {
+            let _ = std::fs::remove_file(&tmp_path);
+            return DiskOpResult {
+                success: false,
+                message: format!("Failed to start diskpart: {e}"),
+            };
+        }
+    };
+
+    let start = Instant::now();
+    let result = loop {
+        match child.try_wait() {
+            Ok(Some(status)) => break Ok((status, child)),
+            Ok(None) => {
+                if start.elapsed() > DISKPART_TIMEOUT {
+                    let _ = child.kill();
+                    break Err("Diskpart timed out after 60 seconds.".to_string());
+                }
+                std::thread::sleep(Duration::from_millis(200));
+            }
+            Err(e) => break Err(format!("Failed to wait for diskpart: {e}")),
+        }
+    };
 
     // Clean up temp file
     let _ = std::fs::remove_file(&tmp_path);
 
     match result {
-        Ok(output) => {
-            let stdout = String::from_utf8_lossy(&output.stdout);
-            let stderr = String::from_utf8_lossy(&output.stderr);
+        Ok((status, mut child)) => {
+            let stdout = {
+                use std::io::Read;
+                let mut s = String::new();
+                if let Some(mut out) = child.stdout.take() { let _ = out.read_to_string(&mut s); }
+                s
+            };
+            let stderr = {
+                use std::io::Read;
+                let mut s = String::new();
+                if let Some(mut err) = child.stderr.take() { let _ = err.read_to_string(&mut s); }
+                s
+            };
             let combined = format!("{stdout}{stderr}");
-            let success =
-                output.status.success() && !combined.to_lowercase().contains("error");
+            let lower = combined.to_lowercase();
+            let has_failure = FAILURE_PHRASES.iter().any(|phrase| lower.contains(phrase));
+            let success = status.success() && !has_failure;
             DiskOpResult {
                 success,
                 message: combined,
             }
         }
-        Err(e) => DiskOpResult {
+        Err(msg) => DiskOpResult {
             success: false,
-            message: format!("Failed to run diskpart: {e}"),
+            message: msg,
         },
     }
 }

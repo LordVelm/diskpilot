@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import type { DiskInfo, PartitionInfo, DiskOpResult } from "../types/disk";
 
@@ -37,6 +38,8 @@ export function ActionBar({
 }: ActionBarProps) {
   const isSystemDisk = disk.is_system_disk;
   const partProtected = partition ? isProtected(partition, disk) : false;
+  const [formatFs, setFormatFs] = useState<"NTFS" | "FAT32" | "exFAT">("NTFS");
+  const [formatQuick, setFormatQuick] = useState(true);
 
   const runOp = async (
     label: string,
@@ -45,7 +48,14 @@ export function ActionBar({
     setStatus(`${label}...`);
     try {
       const result = await fn();
-      setStatus(result.success ? `${label} completed` : `${label} failed`);
+      if (result.success) {
+        setStatus(`${label} completed`);
+      } else {
+        // Extract the first meaningful line from diskpart output
+        const lines = result.message.split("\n").filter((l) => l.trim());
+        const detail = lines.find((l) => /error|blocked|denied|protected|failed/i.test(l)) ?? lines[lines.length - 1] ?? "Unknown error";
+        setStatus(`${label} failed: ${detail.trim()}`);
+      }
       onAction(); // refresh
     } catch (e) {
       const msg = typeof e === "string" ? e : (e as Error).message ?? "Unknown error";
@@ -57,16 +67,16 @@ export function ActionBar({
     if (!partition) return;
     setConfirmDialog({
       title: "Format Partition",
-      message: `This will erase all data on partition ${partition.index}${partition.drive_letter ? ` (${partition.drive_letter}:)` : ""}. This cannot be undone.`,
+      message: `This will erase all data on partition ${partition.index}${partition.drive_letter ? ` (${partition.drive_letter}:)` : ""} and format as ${formatFs}${formatQuick ? " (quick)" : " (full)"}. This cannot be undone.`,
       confirmText: `FORMAT PARTITION ${partition.index}`,
       onConfirm: () => {
         runOp("Format", () =>
           invoke<DiskOpResult>("format_partition", {
             diskIndex: disk.index,
             partitionIndex: partition.index,
-            filesystem: "NTFS",
+            filesystem: formatFs,
             label: "",
-            quick: true,
+            quick: formatQuick,
           }),
         );
       },
@@ -104,41 +114,53 @@ export function ActionBar({
   };
 
   const handleCreate = () => {
-    runOp("Create partition", () =>
-      invoke<DiskOpResult>("create_partition", {
-        diskIndex: disk.index,
-        sizeMb: null,
-        primary: true,
-      }),
-    );
+    setConfirmDialog({
+      title: "Create Partition",
+      message: `This will create a new primary partition using all available free space on Disk ${disk.index} (${disk.model}).`,
+      confirmText: `CREATE PARTITION`,
+      onConfirm: () => {
+        runOp("Create partition", () =>
+          invoke<DiskOpResult>("create_partition", {
+            diskIndex: disk.index,
+            sizeMb: null,
+            primary: true,
+          }),
+        );
+      },
+    });
   };
 
-  const handleAssignLetter = () => {
+  const handleAssignLetter = async () => {
     if (!partition) return;
-    // Find an available letter (simple approach: try D-Z)
-    const usedLetters = new Set(
-      disk.partitions.map((p) => p.drive_letter).filter(Boolean),
-    );
-    let available = "";
-    for (let code = 68; code <= 90; code++) {
-      // D-Z
-      const l = String.fromCharCode(code);
-      if (!usedLetters.has(l)) {
-        available = l;
-        break;
+    // Check letters across ALL disks, not just the current one
+    try {
+      const allDisks = await invoke<DiskInfo[]>("get_disks");
+      const usedLetters = new Set(
+        allDisks.flatMap((d) => d.partitions.map((p) => p.drive_letter)).filter(Boolean),
+      );
+      let available = "";
+      for (let code = 68; code <= 90; code++) {
+        // D-Z
+        const l = String.fromCharCode(code);
+        if (!usedLetters.has(l)) {
+          available = l;
+          break;
+        }
       }
+      if (!available) {
+        setStatus("No available drive letters");
+        return;
+      }
+      runOp(`Assign letter ${available}:`, () =>
+        invoke<DiskOpResult>("assign_letter", {
+          diskIndex: disk.index,
+          partitionIndex: partition.index,
+          letter: available,
+        }),
+      );
+    } catch {
+      setStatus("Failed to check available drive letters");
     }
-    if (!available) {
-      setStatus("No available drive letters");
-      return;
-    }
-    runOp(`Assign letter ${available}:`, () =>
-      invoke<DiskOpResult>("assign_letter", {
-        diskIndex: disk.index,
-        partitionIndex: partition.index,
-        letter: available,
-      }),
-    );
   };
 
   const handleRemoveLetter = () => {
@@ -154,10 +176,24 @@ export function ActionBar({
 
   return (
     <div
-      className="flex flex-wrap gap-2 rounded-lg p-3"
+      className="flex flex-wrap gap-2 items-center rounded-lg p-3"
       style={{ background: "var(--bg-card)" }}
     >
-      {/* Partition-level actions */}
+      {/* Format options */}
+      <select
+        value={formatFs}
+        onChange={(e) => setFormatFs(e.target.value as "NTFS" | "FAT32" | "exFAT")}
+        className="px-2 py-1.5 text-xs rounded-md border"
+        style={{ background: "var(--bg-input)", color: "var(--text-primary)", borderColor: "var(--separator)" }}
+      >
+        <option value="NTFS">NTFS</option>
+        <option value="FAT32">FAT32</option>
+        <option value="exFAT">exFAT</option>
+      </select>
+      <label className="flex items-center gap-1 text-xs" style={{ color: "var(--text-secondary)" }}>
+        <input type="checkbox" checked={formatQuick} onChange={(e) => setFormatQuick(e.target.checked)} />
+        Quick
+      </label>
       <ActionButton
         label="Format"
         color="var(--accent-purple)"

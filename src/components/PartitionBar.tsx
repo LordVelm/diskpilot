@@ -22,12 +22,13 @@ function partitionColor(part: PartitionInfo, onSystemDisk: boolean): string {
 
 function isProtected(part: PartitionInfo, onSystemDisk: boolean): boolean {
   if (!onSystemDisk) return false;
-  const sysLetter = "C"; // matches Python default
+  // Backend enforces via %SystemDrive%; frontend uses system disk flags as primary signal.
+  // Drive letter check is a fallback — most system partitions have is_system or is_boot set.
   return (
     part.is_system ||
     part.is_boot ||
     ["EFI System", "Recovery", "MSR"].includes(part.partition_type) ||
-    part.drive_letter === sysLetter
+    part.drive_letter === "C"
   );
 }
 

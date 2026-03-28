@@ -33,10 +33,13 @@ export default function App() {
       setStatus(`${result.length} disk(s) found`);
 
       // If selected disk no longer exists, clear selection
-      if (selectedDiskIndex !== null && !result.find((d) => d.index === selectedDiskIndex)) {
-        setSelectedDiskIndex(null);
-        setSelectedPartitionIndex(null);
-      }
+      setSelectedDiskIndex((prev) => {
+        if (prev !== null && !result.find((d) => d.index === prev)) {
+          setSelectedPartitionIndex(null);
+          return null;
+        }
+        return prev;
+      });
     } catch (e) {
       const msg = typeof e === "string" ? e : (e as Error).message ?? "Unknown error";
       setError(msg);
@@ -44,7 +47,7 @@ export default function App() {
     } finally {
       setLoading(false);
     }
-  }, [selectedDiskIndex]);
+  }, []);
 
   useEffect(() => {
     refreshDisks();
