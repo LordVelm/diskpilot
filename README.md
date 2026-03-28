@@ -17,11 +17,12 @@
 
 ---
 
-<!-- TODO: Add screenshots
 <p align="center">
-  <img src="docs/screenshots/main.png" width="720" alt="DiskPilot main view" />
+  <img src="docs/screenshots/main.png" width="720" alt="DiskPilot main view with partition bar and details" />
 </p>
--->
+<p align="center">
+  <img src="docs/screenshots/confirm.png" width="720" alt="Type-to-confirm safety dialog" />
+</p>
 
 ## What It Does
 
