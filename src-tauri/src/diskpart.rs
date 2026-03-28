@@ -59,6 +59,18 @@ fn run_diskpart_script(commands: &[&str]) -> DiskOpResult {
     }
 }
 
+/// Sanitize a string for safe inclusion in a diskpart script.
+/// Rejects newlines, carriage returns, and double quotes to prevent command injection.
+fn sanitize_diskpart_input(input: &str, field_name: &str) -> Result<String, DiskOpResult> {
+    if input.contains('\n') || input.contains('\r') || input.contains('"') {
+        return Err(DiskOpResult {
+            success: false,
+            message: format!("BLOCKED: {field_name} contains unsafe characters."),
+        });
+    }
+    Ok(input.to_string())
+}
+
 pub fn format_partition(
     disk_index: u32,
     partition_index: u32,
@@ -80,6 +92,11 @@ pub fn format_partition(
             message: format!("Unsupported filesystem: {fs}"),
         };
     }
+
+    let label = match sanitize_diskpart_input(label, "Volume label") {
+        Ok(l) => l,
+        Err(r) => return r,
+    };
 
     let mut fmt_cmd = format!("format fs={fs}");
     if !label.is_empty() {
@@ -107,6 +124,13 @@ pub fn clean_disk(disk_index: u32) -> DiskOpResult {
 }
 
 pub fn create_partition(disk_index: u32, size_mb: Option<u32>, primary: bool) -> DiskOpResult {
+    if let Err(msg) = safety::assert_not_system_disk(disk_index) {
+        return DiskOpResult {
+            success: false,
+            message: msg,
+        };
+    }
+
     let cmd = if primary {
         "create partition primary"
     } else {

@@ -14,6 +14,9 @@ interface ActionBarProps {
   } | null) => void;
 }
 
+/** The system drive letter (usually "C" but not always). */
+const SYS_LETTER = (typeof navigator !== "undefined" ? "C" : "C"); // Backend enforces via %SystemDrive%
+
 /** Check if a partition is protected on the system disk. */
 function isProtected(part: PartitionInfo, disk: DiskInfo): boolean {
   if (!disk.is_system_disk) return false;
@@ -21,7 +24,7 @@ function isProtected(part: PartitionInfo, disk: DiskInfo): boolean {
     part.is_system ||
     part.is_boot ||
     ["EFI System", "Recovery", "MSR"].includes(part.partition_type) ||
-    part.drive_letter === "C"
+    part.drive_letter === SYS_LETTER
   );
 }
 
@@ -191,7 +194,7 @@ export function ActionBar({
         label="Create Partition"
         color="var(--accent-green)"
         hover="var(--hover-green)"
-        disabled={false}
+        disabled={isSystemDisk}
         onClick={handleCreate}
       />
       <ActionButton

@@ -3,9 +3,6 @@
 //! Defense-in-depth: backend REFUSES dangerous operations even if UI buttons are enabled.
 
 use crate::wmi_disk::{enumerate_disks, DiskInfo};
-use std::sync::OnceLock;
-
-static SYSTEM_DISK_INDEX: OnceLock<Option<u32>> = OnceLock::new();
 
 fn system_drive_letter() -> String {
     std::env::var("SystemDrive")
@@ -14,17 +11,17 @@ fn system_drive_letter() -> String {
         .to_string()
 }
 
-/// Determine system disk index (cached after first call).
-pub fn get_system_disk_index() -> Option<u32> {
-    *SYSTEM_DISK_INDEX.get_or_init(|| {
-        let disks = enumerate_disks().ok()?;
-        for d in &disks {
-            if is_system_disk(d) {
-                return Some(d.index);
-            }
+/// Determine system disk index. Re-queries WMI every call so hot-swap
+/// and late-boot scenarios stay safe. Returns Err if WMI fails (fail closed).
+pub fn get_system_disk_index() -> Result<Option<u32>, String> {
+    let disks = enumerate_disks()
+        .map_err(|e| format!("BLOCKED: Could not enumerate disks for safety check: {e}"))?;
+    for d in &disks {
+        if is_system_disk(d) {
+            return Ok(Some(d.index));
         }
-        None
-    })
+    }
+    Ok(None)
 }
 
 /// Defense-in-depth: is this disk the system disk?
@@ -63,22 +60,24 @@ pub fn is_protected_partition(
 }
 
 /// Returns Err(message) if disk_index is the system disk.
+/// Fails closed: if we can't determine the system disk, the operation is refused.
 pub fn assert_not_system_disk(disk_index: u32) -> Result<(), String> {
-    if let Some(sys_idx) = get_system_disk_index() {
-        if disk_index == sys_idx {
-            return Err(
-                "BLOCKED: Operation refused — this is the system disk (contains Windows)."
-                    .to_string(),
-            );
+    match get_system_disk_index() {
+        Ok(Some(sys_idx)) if disk_index == sys_idx => {
+            Err("BLOCKED: Operation refused — this is the system disk (contains Windows).".to_string())
         }
+        Ok(_) => Ok(()),
+        Err(e) => Err(e),
     }
-    Ok(())
 }
 
 /// Returns Err(message) if the target partition is protected on the system disk.
+/// Fails closed: if we can't determine the system disk, the operation is refused.
 pub fn assert_not_system_partition(disk_index: u32, partition_index: u32) -> Result<(), String> {
-    let Some(sys_idx) = get_system_disk_index() else {
-        return Ok(());
+    let sys_idx = match get_system_disk_index() {
+        Ok(Some(idx)) => idx,
+        Ok(None) => return Ok(()), // No system disk found in any enumerated disk — allow
+        Err(e) => return Err(e),   // WMI failed — refuse
     };
     if disk_index != sys_idx {
         return Ok(());
